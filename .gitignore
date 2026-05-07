@@ -1,0 +1,46 @@
+# Sensitive files
+*.db
+*.db-shm
+*.db-wal
+auth.json
+.env
+.env.*
+*.env
+
+# Runtime data
+__pycache__/
+*.pyc
+sessions/
+cache/
+logs/
+venv/
+node/
+
+# Large generated files
+models_dev_cache.json
+*.jsonl
+response_store.db*
+state.db*
+
+# Hermes internal
+.skills_prompt_snapshot.json
+gateway.pid
+gateway_state.json
+processes.json
+.hermes_history
+.update_check
+channel_directory.json
+
+# Audio/image cache
+audio_cache/
+image_cache/
+
+# WhatsApp/external integrations
+whatsapp/
+pairing/
+sandboxes/
+
+# Memory runtime state (not code)
+memory/backups/
+memory/continuous_learning/
+memory/learning/
