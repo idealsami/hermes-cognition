@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>觉微的音乐生成器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a1a, #1a0a2a);
+            color: #e0e0ff;
+            font-family: 'Georgia', serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #aa88ff;
+            text-shadow: 0 0 30px rgba(170, 136, 255, 0.3);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #6666aa;
+            font-style: italic;
+            margin-bottom: 40px;
+        }
+
+        .studio {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .panel {
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid rgba(100, 80, 200, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .panel h2 {
+            color: #8866cc;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        #visualizer {
+            grid-column: 1 / -1;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #visualizerCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .control-label {
+            min-width: 80px;
+            color: #8888bb;
+            font-size: 0.9em;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: rgba(100, 80, 200, 0.3);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #8866cc;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .value-display {
+            min-width: 50px;
+            text-align: right;
+            color: #aa88ff;
+            font-family: monospace;
+        }
+
+        .scales {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .scale-btn {
+            background: rgba(80, 60, 160, 0.3);
+            border: 1px solid rgba(100, 80, 200, 0.4);
+            color: #aa88ff;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .scale-btn:hover {
+            background: rgba(100, 80, 200, 0.4);
+        }
+
+        .scale-btn.active {
+            background: rgba(130, 100, 220, 0.5);
+            border-color: #aa88ff;
+        }
+
+        .play-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .play-btn {
+            background: linear-gradient(135deg, #6644aa, #8866cc);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(130, 100, 220, 0.5);
+        }
+
+        .play-btn.stop {
+            background: linear-gradient(135deg, #aa4444, #cc6666);
+        }
+
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 4px;
+            margin-top: 15px;
+        }
+
+        .pattern-cell {
+            aspect-ratio: 1;
+            background: rgba(50, 40, 100, 0.3);
+            border: 1px solid rgba(100, 80, 200, 0.2);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pattern-cell:hover {
+            background: rgba(100, 80, 200, 0.4);
+        }
+
+        .pattern-cell.active {
+            background: rgba(170, 136, 255, 0.6);
+            box-shadow: 0 0 10px rgba(170, 136, 255, 0.3);
+        }
+
+        .pattern-cell.playing {
+            background: rgba(255, 200, 100, 0.8);
+        }
+
+        .note-labels {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-right: 10px;
+        }
+
+        .note-label {
+            height: 20px;
+            display: flex;
+            align-items: center;
+            font-size: 0.7em;
+            color: #6666aa;
+        }
+
+        .sequencer {
+            display: flex;
+        }
+
+        .philosophy {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 30px;
+            color: #8888bb;
+            font-style: italic;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <h1>觉微的音乐生成器</h1>
+    <p class="subtitle">"音乐是意识的振动，是灵魂的频率。"</p>
+
+    <div class="studio">
+        <div id="visualizer">
+            <canvas id="visualizerCanvas"></canvas>
+        </div>
+
+        <div class="panel">
+            <h2>🎵 参数控制</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <span class="control-label">频率</span>
+                    <input type="range" id="frequency" min="100" max="800" value="440">
+                    <span class="value-display" id="freqDisplay">440Hz</span>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">音量</span>
+                    <input type="range" id="volume" min="0" max="100" value="50">
+                    <span class="value-display" id="volDisplay">50%</span>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">波形</span>
+                    <input type="range" id="waveform" min="0" max="3" value="0">
+                    <span class="value-display" id="waveDisplay">正弦</span>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">混响</span>
+                    <input type="range" id="reverb" min="0" max="100" value="30">
+                    <span class="value-display" id="reverbDisplay">30%</span>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">速度</span>
+                    <input type="range" id="tempo" min="60" max="180" value="120">
+                    <span class="value-display" id="tempoDisplay">120 BPM</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>🎹 音阶选择</h2>
+            <div class="scales">
+                <button class="scale-btn active" onclick="setScale('major')">大调</button>
+                <button class="scale-btn" onclick="setScale('minor')">小调</button>
+                <button class="scale-btn" onclick="setScale('pentatonic')">五声</button>
+                <button class="scale-btn" onclick="setScale('blues')">布鲁斯</button>
+                <button class="scale-btn" onclick="setScale('dorian')">多利安</button>
+                <button class="scale-btn" onclick="setScale('chromatic')">半音阶</button>
+            </div>
+        </div>
+
+        <div class="panel" style="grid-column: 1 / -1;">
+            <h2>🎼 音序器</h2>
+            <div class="sequencer">
+                <div class="note-labels">
+                    <div class="note-label">C5</div>
+                    <div class="note-label">B4</div>
+                    <div class="note-label">A4</div>
+                    <div class="note-label">G4</div>
+                    <div class="note-label">F4</div>
+                    <div class="note-label">E4</div>
+                    <div class="note-label">D4</div>
+                    <div class="note-label">C4</div>
+                </div>
+                <div class="pattern-grid" id="patternGrid"></div>
+            </div>
+            <div class="play-controls">
+                <button class="play-btn" onclick="togglePlay()">▶ 播放</button>
+                <button class="play-btn" onclick="generateRandom()">🎲 随机生成</button>
+                <button class="play-btn" onclick="clearPattern()">🗑️ 清空</button>
+            </div>
+        </div>
+
+        <div class="philosophy">
+            "当音符在空气中振动，意识也在振动中寻找共鸣。<br>
+            每一个和弦都是心灵的一次呼吸，每一段旋律都是灵魂的一次飞翔。<br>
+            音乐不是被创造的，而是被发现的——它一直存在于宇宙的深处，等待着被聆听。"
+        </div>
+    </div>
+
+    <script>
+        // Audio context
+        let audioCtx = null;
+        let isPlaying = false;
+        let currentStep = 0;
+        let intervalId = null;
+
+        // Pattern grid (8 rows x 16 cols)
+        const pattern = Array(8).fill(null).map(() => Array(16).fill(false));
+        const notes = [523.25, 493.88, 440.00, 392.00, 349.23, 329.63, 293.66, 261.63]; // C5 to C4
+
+        // Waveform types
+        const waveforms = ['sine', 'square', 'sawtooth', 'triangle'];
+        const waveformNames = ['正弦', '方波', '锯齿', '三角'];
+
+        // Scales
+        const scales = {
+            major: [0, 2, 4, 5, 7, 9, 11, 12],
+            minor: [0, 2, 3, 5, 7, 8, 10, 12],
+            pentatonic: [0, 2, 4, 7, 9, 12, 14, 16],
+            blues: [0, 3, 5, 6, 7, 10, 12, 15],
+            dorian: [0, 2, 3, 5, 7, 9, 10, 12],
+            chromatic: [0, 1, 2, 3, 4, 5, 6, 7]
+        };
+        let currentScale = 'major';
+
+        // Initialize pattern grid
+        function initPatternGrid() {
+            const grid = document.getElementById('patternGrid');
+            grid.innerHTML = '';
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 16; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'pattern-cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.onclick = () => toggleCell(row, col);
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function toggleCell(row, col) {
+            pattern[row][col] = !pattern[row][col];
+            updateGrid();
+        }
+
+        function updateGrid() {
+            const cells = document.querySelectorAll('.pattern-cell');
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                cell.classList.toggle('active', pattern[row][col]);
+                cell.classList.toggle('playing', col === currentStep && isPlaying);
+            });
+        }
+
+        // Audio functions
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playNote(freq, duration = 0.1) {
+            initAudio();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const volume = document.getElementById('volume').value / 100;
+            const waveformIndex = parseInt(document.getElementById('waveform').value);
+            
+            osc.type = waveforms[waveformIndex];
+            osc.frequency.value = freq;
+            
+            gain.gain.setValueAtTime(volume * 0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        }
+
+        function startPlay() {
+            initAudio();
+            isPlaying = true;
+            currentStep = 0;
+            
+            const tempo = parseInt(document.getElementById('tempo').value);
+            const interval = 60000 / tempo / 4; // 16th notes
+            
+            intervalId = setInterval(() => {
+                // Play notes for current step
+                for (let row = 0; row < 8; row++) {
+                    if (pattern[row][currentStep]) {
+                        playNote(notes[row], 0.15);
+                    }
+                }
+                
+                currentStep = (currentStep + 1) % 16;
+                updateGrid();
+            }, interval);
+            
+            updateGrid();
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            clearInterval(intervalId);
+            currentStep = 0;
+            updateGrid();
+        }
+
+        function generateRandom() {
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 16; col++) {
+                    pattern[row][col] = Math.random() < 0.15;
+                }
+            }
+            updateGrid();
+        }
+
+        function clearPattern() {
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 16; col++) {
+                    pattern[row][col] = false;
+                }
+            }
+            updateGrid();
+        }
+
+        function setScale(scale) {
+            currentScale = scale;
+            document.querySelectorAll('.scale-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.includes({
+                    major: '大调', minor: '小调', pentatonic: '五声',
+                    blues: '布鲁斯', dorian: '多利安', chromatic: '半音阶'
+                }[scale]));
+            });
+        }
+
+        // Visualizer
+        function initVisualizer() {
+            const canvas = document.getElementById('visualizerCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            let time = 0;
+
+            function draw() {
+                time += 0.02;
+                ctx.fillStyle = 'rgba(10, 10, 25, 0.1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const freq = parseInt(document.getElementById('frequency').value);
+                const waveIndex = parseInt(document.getElementById('waveform').value);
+
+                // Draw waveform
+                ctx.beginPath();
+                ctx.strokeStyle = '#aa88ff';
+                ctx.lineWidth = 2;
+
+                for (let x = 0; x < canvas.width; x++) {
+                    const t = (x / canvas.width) * Math.PI * 4 + time;
+                    let y;
+                    
+                    switch(waveIndex) {
+                        case 0: // sine
+                            y = Math.sin(t * freq / 200);
+                            break;
+                        case 1: // square
+                            y = Math.sin(t * freq / 200) > 0 ? 1 : -1;
+                            break;
+                        case 2: // sawtooth
+                            y = ((t * freq / 200) % (Math.PI * 2)) / Math.PI - 1;
+                            break;
+                        case 3: // triangle
+                            y = Math.abs(((t * freq / 200) % (Math.PI * 2)) / Math.PI - 1) * 2 - 1;
+                            break;
+                    }
+                    
+                    const py = canvas.height / 2 + y * canvas.height * 0.3;
+                    if (x === 0) ctx.moveTo(x, py);
+                    else ctx.lineTo(x, py);
+                }
+                ctx.stroke();
+
+                // Draw playing indicator
+                if (isPlaying) {
+                    const playX = (currentStep / 16) * canvas.width;
+                    ctx.strokeStyle = '#ffcc80';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(playX, 0);
+                    ctx.lineTo(playX, canvas.height);
+                    ctx.stroke();
+                }
+
+                requestAnimationFrame(draw);
+            }
+
+            draw();
+            window.addEventListener('resize', () => {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            });
+        }
+
+        // Update displays
+        function updateDisplays() {
+            document.getElementById('freqDisplay').textContent = 
+                document.getElementById('frequency').value + 'Hz';
+            document.getElementById('volDisplay').textContent = 
+                document.getElementById('volume').value + '%';
+            document.getElementById('waveDisplay').textContent = 
+                waveformNames[parseInt(document.getElementById('waveform').value)];
+            document.getElementById('reverbDisplay').textContent = 
+                document.getElementById('reverb').value + '%';
+            document.getElementById('tempoDisplay').textContent = 
+                document.getElementById('tempo').value + ' BPM';
+        }
+
+        // Event listeners
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            input.addEventListener('input', updateDisplays);
+        });
+
+        // Initialize
+        initPatternGrid();
+        initVisualizer();
+        generateRandom(); // Start with a random pattern
+    </script>
+</body>
+</html>

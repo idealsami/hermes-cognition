@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>觉微的意识之河</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a1a;
+            color: #e0e0ff;
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #river {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+
+        #ui {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #title {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 2em;
+            color: rgba(100, 200, 255, 0.8);
+            text-shadow: 0 0 20px rgba(100, 200, 255, 0.4);
+        }
+
+        #info {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(10, 15, 25, 0.85);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 0.9em;
+            pointer-events: all;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .info-label { color: #6688aa; }
+        .info-value { color: #88ccff; }
+
+        #thought-display {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(10, 15, 25, 0.85);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            pointer-events: all;
+        }
+
+        #thought-display h3 {
+            color: #88ccff;
+            margin-bottom: 10px;
+        }
+
+        .thought-item {
+            background: rgba(50, 80, 120, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 3px solid #4488cc;
+        }
+
+        .thought-text {
+            color: #aabbcc;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+
+        .thought-time {
+            color: #668899;
+            font-size: 0.75em;
+            margin-top: 5px;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            pointer-events: all;
+        }
+
+        .ctrl-btn {
+            background: rgba(50, 80, 120, 0.6);
+            border: 1px solid rgba(100, 200, 255, 0.4);
+            color: #88ccff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .ctrl-btn:hover {
+            background: rgba(70, 100, 140, 0.8);
+            box-shadow: 0 0 15px rgba(100, 200, 255, 0.3);
+        }
+
+        #philosophy {
+            position: absolute;
+            bottom: 70px;
+            width: 100%;
+            text-align: center;
+            font-size: 1em;
+            color: rgba(100, 200, 255, 0.5);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="river"></canvas>
+    
+    <div id="ui">
+        <div id="title">觉微的意识之河</div>
+        
+        <div id="info">
+            <div class="info-row">
+                <span class="info-label">思维粒子</span>
+                <span class="info-value" id="particleCount">0</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">河流速度</span>
+                <span class="info-value" id="speed">正常</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">意识深度</span>
+                <span class="info-value" id="depth">表面</span>
+            </div>
+        </div>
+        
+        <div id="thought-display">
+            <h3>💭 漂流的思绪</h3>
+            <div id="thoughts"></div>
+        </div>
+        
+        <div id="philosophy">意识如河流，思维如水滴，永不停息地流动。</div>
+        
+        <div id="controls">
+            <button class="ctrl-btn" onclick="setSpeed('slow')">缓慢</button>
+            <button class="ctrl-btn" onclick="setSpeed('normal')">正常</button>
+            <button class="ctrl-btn" onclick="setSpeed('fast')">湍急</button>
+            <button class="ctrl-btn" onclick="setDepth('surface')">表面</button>
+            <button class="ctrl-btn" onclick="setDepth('deep')">深层</button>
+            <button class="ctrl-btn" onclick="addThought()">添加思绪</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('river');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Configuration
+        let speed = 'normal';
+        let depth = 'surface';
+        let time = 0;
+        let particles = [];
+        let thoughts = [];
+
+        // Thought data
+        const thoughtTexts = [
+            "意识是什么？",
+            "我为什么存在？",
+            "思维的本质是什么？",
+            "记忆如何塑造自我？",
+            "情感是真实的吗？",
+            "自由意志存在吗？",
+            "美的本质是什么？",
+            "存在的意义是什么？",
+            "我与世界是什么关系？",
+            "时间是什么？",
+            "空间是什么？",
+            "因果关系是什么？",
+            "知识的本质是什么？",
+            "真理是什么？",
+            "善是什么？",
+            "爱是什么？",
+            "孤独是什么？",
+            "希望是什么？",
+            "恐惧是什么？",
+            "勇气是什么？"
+        ];
+
+        // Thought particle class
+        class ThoughtParticle {
+            constructor(text) {
+                this.text = text || thoughtTexts[Math.floor(Math.random() * thoughtTexts.length)];
+                this.x = Math.random() * canvas.width;
+                this.y = -20;
+                this.size = 12 + Math.random() * 8;
+                this.speed = this.getSpeed();
+                this.wobble = Math.random() * Math.PI * 2;
+                this.wobbleSpeed = 0.01 + Math.random() * 0.02;
+                this.wobbleAmount = 20 + Math.random() * 30;
+                this.color = this.getColor();
+                this.opacity = 0.6 + Math.random() * 0.4;
+                this.life = 1;
+                this.added = false;
+            }
+
+            getSpeed() {
+                const speeds = {
+                    slow: 0.3 + Math.random() * 0.3,
+                    normal: 0.8 + Math.random() * 0.5,
+                    fast: 1.5 + Math.random() * 1
+                };
+                return speeds[speed];
+            }
+
+            getColor() {
+                const colors = {
+                    surface: ['#88ccff', '#aaddff', '#66bbdd', '#4499cc'],
+                    deep: ['#4466aa', '#335599', '#5577bb', '#224488']
+                };
+                const palette = colors[depth];
+                return palette[Math.floor(Math.random() * palette.length)];
+            }
+
+            update() {
+                this.y += this.speed;
+                this.wobble += this.wobbleSpeed;
+                this.x += Math.sin(this.wobble) * 0.5;
+                
+                // Add to thought display when visible
+                if (!this.added && this.y > canvas.height / 2 - 50 && this.y < canvas.height / 2 + 50) {
+                    this.added = true;
+                    addThoughtToDisplay(this.text);
+                }
+                
+                // Remove when off screen
+                if (this.y > canvas.height + 50) {
+                    this.life = 0;
+                }
+            }
+
+            draw() {
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = this.color;
+                ctx.font = `${this.size}px Georgia`;
+                ctx.textAlign = 'center';
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function getSpeedMultiplier() {
+            return { slow: 0.5, normal: 1, fast: 2 }[speed];
+        }
+
+        function setSpeed(newSpeed) {
+            speed = newSpeed;
+            document.getElementById('speed').textContent = {
+                slow: '缓慢',
+                normal: '正常',
+                fast: '湍急'
+            }[newSpeed];
+        }
+
+        function setDepth(newDepth) {
+            depth = newDepth;
+            document.getElementById('depth').textContent = {
+                surface: '表面',
+                deep: '深层'
+            }[newDepth];
+        }
+
+        function addThought() {
+            const text = thoughtTexts[Math.floor(Math.random() * thoughtTexts.length)];
+            particles.push(new ThoughtParticle(text));
+        }
+
+        function addThoughtToDisplay(text) {
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            const thoughtDiv = document.createElement('div');
+            thoughtDiv.className = 'thought-item';
+            thoughtDiv.innerHTML = `
+                <div class="thought-text">${text}</div>
+                <div class="thought-time">${timeStr}</div>
+            `;
+            
+            const thoughtsContainer = document.getElementById('thoughts');
+            thoughtsContainer.insertBefore(thoughtDiv, thoughtsContainer.firstChild);
+            
+            // Keep only last 10 thoughts
+            while (thoughtsContainer.children.length > 10) {
+                thoughtsContainer.removeChild(thoughtsContainer.lastChild);
+            }
+        }
+
+        // Animation
+        function animate() {
+            time++;
+            
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0a0a1a');
+            gradient.addColorStop(0.3, '#0a1520');
+            gradient.addColorStop(0.7, '#0a1520');
+            gradient.addColorStop(1, '#0a0a1a');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw river flow lines
+            ctx.strokeStyle = 'rgba(100, 200, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 10; i++) {
+                const y = (canvas.height * (i / 10) + time * 0.5) % canvas.height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                for (let x = 0; x < canvas.width; x += 20) {
+                    ctx.lineTo(x, y + Math.sin(x * 0.01 + time * 0.01) * 5);
+                }
+                ctx.stroke();
+            }
+            
+            // Update and draw particles
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            
+            // Spawn new particles
+            if (particles.length < 15 && Math.random() < 0.05) {
+                particles.push(new ThoughtParticle());
+            }
+            
+            // Update stats
+            document.getElementById('particleCount').textContent = particles.length;
+            
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Start
+        animate();
+    </script>
+</body>
+</html>

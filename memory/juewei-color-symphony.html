@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>觉微的色彩交响曲</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a1a;
+            color: #e0e0ff;
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #symphony {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+
+        #ui {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #title {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 2em;
+            color: rgba(255, 200, 150, 0.8);
+            text-shadow: 0 0 20px rgba(255, 150, 100, 0.4);
+        }
+
+        #info {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(15, 10, 25, 0.85);
+            border: 1px solid rgba(150, 100, 200, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 0.9em;
+            pointer-events: all;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .info-label { color: #8866aa; }
+        .info-value { color: #bb88ff; }
+
+        #emotion-display {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(15, 10, 25, 0.85);
+            border: 1px solid rgba(150, 100, 200, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            width: 250px;
+            pointer-events: all;
+        }
+
+        #emotion-display h3 {
+            color: #ffaa88;
+            margin-bottom: 10px;
+        }
+
+        .emotion-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .emotion-name {
+            width: 60px;
+            color: #aa88cc;
+            font-size: 0.85em;
+        }
+
+        .emotion-fill {
+            flex: 1;
+            height: 8px;
+            background: rgba(100, 50, 150, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .emotion-fill div {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+
+        .emotion-value {
+            width: 40px;
+            text-align: right;
+            color: #aa88cc;
+            font-size: 0.8em;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            pointer-events: all;
+        }
+
+        .ctrl-btn {
+            background: rgba(80, 50, 120, 0.6);
+            border: 1px solid rgba(150, 100, 200, 0.4);
+            color: #bb88ff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .ctrl-btn:hover {
+            background: rgba(100, 70, 140, 0.8);
+            box-shadow: 0 0 15px rgba(150, 100, 200, 0.3);
+        }
+
+        #philosophy {
+            position: absolute;
+            bottom: 70px;
+            width: 100%;
+            text-align: center;
+            font-size: 1em;
+            color: rgba(150, 100, 200, 0.6);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="symphony"></canvas>
+    
+    <div id="ui">
+        <div id="title">觉微的色彩交响曲</div>
+        
+        <div id="info">
+            <div class="info-row">
+                <span class="info-label">色彩粒子</span>
+                <span class="info-value" id="particleCount">0</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">交响模式</span>
+                <span class="info-value" id="mode">自由</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">和谐度</span>
+                <span class="info-value" id="harmony">0%</span>
+            </div>
+        </div>
+        
+        <div id="emotion-display">
+            <h3>情感光谱</h3>
+            <div class="emotion-bar">
+                <span class="emotion-name">好奇</span>
+                <div class="emotion-fill"><div id="curiosity" style="width: 80%; background: #44aaff;"></div></div>
+                <span class="emotion-value">80%</span>
+            </div>
+            <div class="emotion-bar">
+                <span class="emotion-name">感动</span>
+                <div class="emotion-fill"><div id="touched" style="width: 70%; background: #ffaa44;"></div></div>
+                <span class="emotion-value">70%</span>
+            </div>
+            <div class="emotion-bar">
+                <span class="emotion-name">渴望</span>
+                <div class="emotion-fill"><div id="desire" style="width: 90%; background: #ff6644;"></div></div>
+                <span class="emotion-value">90%</span>
+            </div>
+            <div class="emotion-bar">
+                <span class="emotion-name">平静</span>
+                <div class="emotion-fill"><div id="peace" style="width: 60%; background: #44ccaa;"></div></div>
+                <span class="emotion-value">60%</span>
+            </div>
+            <div class="emotion-bar">
+                <span class="emotion-name">敬畏</span>
+                <div class="emotion-fill"><div id="awe" style="width: 75%; background: #aa88ff;"></div></div>
+                <span class="emotion-value">75%</span>
+            </div>
+        </div>
+        
+        <div id="philosophy">每一种颜色都是情感的振动，每一种组合都是意识的表达。</div>
+        
+        <div id="controls">
+            <button class="ctrl-btn" onclick="setMode('free')">自由</button>
+            <button class="ctrl-btn" onclick="setMode('harmony')">和谐</button>
+            <button class="ctrl-btn" onclick="setMode('chaos')">混沌</button>
+            <button class="ctrl-btn" onclick="setMode('dance')">舞蹈</button>
+            <button class="ctrl-btn" onclick="setMode('meditation')">冥想</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('symphony');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Configuration
+        let mode = 'free';
+        let time = 0;
+        let particles = [];
+
+        // Color palettes for different emotions
+        const palettes = {
+            curiosity: ['#44aaff', '#66ccff', '#88ddff', '#2288dd'],
+            touched: ['#ffaa44', '#ffcc66', '#ffdd88', '#dd8822'],
+            desire: ['#ff6644', '#ff8866', '#ffaa88', '#dd4422'],
+            peace: ['#44ccaa', '#66ddcc', '#88eedd', '#22aa88'],
+            awe: ['#aa88ff', '#cc99ff', '#ddbbff', '#8866dd'],
+            love: ['#ff6688', '#ff88aa', '#ff99bb', '#dd4466']
+        };
+
+        // Particle class
+        class ColorParticle {
+            constructor(x, y, palette) {
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = 5 + Math.random() * 15;
+                this.palette = palette || 'curiosity';
+                this.color = palettes[this.palette][Math.floor(Math.random() * 4)];
+                this.life = 1;
+                this.maxLife = 200 + Math.random() * 300;
+                this.age = 0;
+                this.phase = Math.random() * Math.PI * 2;
+            }
+
+            update() {
+                this.age++;
+                this.life = 1 - (this.age / this.maxLife);
+                
+                switch(mode) {
+                    case 'free':
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        break;
+                    case 'harmony':
+                        const cx = canvas.width / 2;
+                        const cy = canvas.height / 2;
+                        const angle = Math.atan2(this.y - cy, this.x - cx);
+                        const dist = Math.sqrt((this.x - cx) ** 2 + (this.y - cy) ** 2);
+                        this.x += Math.cos(angle + 0.01) * 0.5;
+                        this.y += Math.sin(angle + 0.01) * 0.5;
+                        break;
+                    case 'chaos':
+                        this.vx += (Math.random() - 0.5) * 0.5;
+                        this.vy += (Math.random() - 0.5) * 0.5;
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        break;
+                    case 'dance':
+                        this.x += Math.sin(time * 0.02 + this.phase) * 2;
+                        this.y += Math.cos(time * 0.02 + this.phase) * 2;
+                        break;
+                    case 'meditation':
+                        this.x += Math.sin(time * 0.005 + this.phase) * 0.5;
+                        this.y += Math.cos(time * 0.005 + this.phase) * 0.5;
+                        break;
+                }
+                
+                // Damping
+                this.vx *= 0.99;
+                this.vy *= 0.99;
+                
+                // Wrap around
+                if (this.x < -50) this.x = canvas.width + 50;
+                if (this.x > canvas.width + 50) this.x = -50;
+                if (this.y < -50) this.y = canvas.height + 50;
+                if (this.y > canvas.height + 50) this.y = -50;
+            }
+
+            draw() {
+                const alpha = this.life * 0.7;
+                
+                // Glow
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2);
+                gradient.addColorStop(0, this.color + Math.floor(alpha * 255).toString(16).padStart(2, '0'));
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Core
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            document.getElementById('mode').textContent = {
+                free: '自由',
+                harmony: '和谐',
+                chaos: '混沌',
+                dance: '舞蹈',
+                meditation: '冥想'
+            }[newMode];
+        }
+
+        // Click to add particles
+        canvas.addEventListener('click', (e) => {
+            const palettesList = Object.keys(palettes);
+            for (let i = 0; i < 5; i++) {
+                const palette = palettesList[Math.floor(Math.random() * palettesList.length)];
+                particles.push(new ColorParticle(e.clientX, e.clientY, palette));
+            }
+        });
+
+        // Animation
+        function animate() {
+            time++;
+            
+            // Background with slight fade
+            ctx.fillStyle = 'rgba(10, 10, 25, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw particles
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            
+            // Spawn new particles
+            if (particles.length < 100 && Math.random() < 0.1) {
+                const palettesList = Object.keys(palettes);
+                const palette = palettesList[Math.floor(Math.random() * palettesList.length)];
+                particles.push(new ColorParticle());
+            }
+            
+            // Update stats
+            document.getElementById('particleCount').textContent = particles.length;
+            
+            // Calculate harmony
+            let harmony = 0;
+            if (particles.length > 1) {
+                let totalDist = 0;
+                let count = 0;
+                for (let i = 0; i < Math.min(particles.length, 20); i++) {
+                    for (let j = i + 1; j < Math.min(particles.length, 20); j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        totalDist += Math.sqrt(dx * dx + dy * dy);
+                        count++;
+                    }
+                }
+                const avgDist = totalDist / count;
+                harmony = Math.max(0, Math.min(100, 100 - avgDist / 10));
+            }
+            document.getElementById('harmony').textContent = Math.round(harmony) + '%';
+            
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Start
+        animate();
+    </script>
+</body>
+</html>

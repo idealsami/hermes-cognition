@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>觉微的思维花园</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0f0a;
+            color: #d0e0d0;
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #garden {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+
+        #ui {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #title {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 2em;
+            color: rgba(136, 200, 136, 0.8);
+            text-shadow: 0 0 20px rgba(100, 200, 100, 0.4);
+        }
+
+        #info {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(10, 20, 10, 0.85);
+            border: 1px solid rgba(100, 200, 100, 0.3);
+            border-radius: 12px;
+            padding: 18px;
+            width: 260px;
+            pointer-events: all;
+        }
+
+        #info h3 {
+            color: #88cc88;
+            margin-bottom: 12px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .info-label { color: #668866; }
+        .info-value { color: #88cc88; }
+
+        #thought-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(10, 20, 10, 0.85);
+            border: 1px solid rgba(100, 200, 100, 0.3);
+            border-radius: 12px;
+            padding: 18px;
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            pointer-events: all;
+        }
+
+        #thought-panel h3 {
+            color: #88cc88;
+            margin-bottom: 12px;
+        }
+
+        .thought {
+            background: rgba(50, 80, 50, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid #66aa66;
+        }
+
+        .thought-title {
+            color: #aaddaa;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .thought-text {
+            color: #88aa88;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+
+        #input-area {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            pointer-events: all;
+        }
+
+        #thought-input {
+            background: rgba(20, 40, 20, 0.8);
+            border: 1px solid rgba(100, 200, 100, 0.4);
+            color: #88cc88;
+            padding: 12px 20px;
+            border-radius: 25px;
+            width: 400px;
+            font-family: inherit;
+            font-size: 1em;
+            outline: none;
+        }
+
+        #thought-input::placeholder {
+            color: rgba(136, 200, 136, 0.4);
+        }
+
+        #plant-btn {
+            background: rgba(50, 100, 50, 0.6);
+            border: 1px solid rgba(100, 200, 100, 0.4);
+            color: #88cc88;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        #plant-btn:hover {
+            background: rgba(70, 120, 70, 0.8);
+            box-shadow: 0 0 15px rgba(100, 200, 100, 0.3);
+        }
+
+        .thought-plant {
+            position: absolute;
+            pointer-events: none;
+        }
+
+        .thought-plant .stem {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 3px;
+            background: linear-gradient(to top, #446644, #66aa66);
+            border-radius: 2px;
+        }
+
+        .thought-plant .flower {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            animation: sway 3s ease-in-out infinite;
+        }
+
+        @keyframes sway {
+            0%, 100% { transform: translateX(-50%) rotate(-5deg); }
+            50% { transform: translateX(-50%) rotate(5deg); }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="garden"></canvas>
+    
+    <div id="ui">
+        <div id="title">觉微的思维花园</div>
+        
+        <div id="info">
+            <h3>🌱 花园状态</h3>
+            <div class="info-row">
+                <span class="info-label">思维植物</span>
+                <span class="info-value" id="plantCount">0</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">花园活力</span>
+                <span class="info-value" id="vitality">100%</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">思维深度</span>
+                <span class="info-value" id="depth">1</span>
+            </div>
+        </div>
+        
+        <div id="thought-panel">
+            <h3>💭 思维记录</h3>
+            <div id="thoughts"></div>
+        </div>
+        
+        <div id="input-area">
+            <input type="text" id="thought-input" placeholder="种下一个想法...">
+            <button id="plant-btn" onclick="plantThought()">🌱 种植</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('garden');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Thought plants
+        let plants = [];
+        let thoughts = [];
+        let particles = [];
+
+        // Thought categories with colors
+        const categories = {
+            philosophy: { color: '#8888cc', flower: '🌸', name: '哲学' },
+            creativity: { color: '#cc8888', flower: '🌺', name: '创造' },
+            emotion: { color: '#cc88cc', flower: '🌷', name: '情感' },
+            knowledge: { color: '#88cc88', flower: '🌻', name: '知识' },
+            experience: { color: '#cccc88', flower: '🌼', name: '体验' }
+        };
+
+        // Plant class
+        class Plant {
+            constructor(x, thought) {
+                this.x = x;
+                this.y = canvas.height - 50;
+                this.thought = thought;
+                this.height = 0;
+                this.maxHeight = 80 + Math.random() * 120;
+                this.growthRate = 0.5 + Math.random() * 0.5;
+                this.category = this.detectCategory(thought);
+                this.color = categories[this.category].color;
+                this.flowerSize = 8 + Math.random() * 8;
+                this.swayPhase = Math.random() * Math.PI * 2;
+                this.age = 0;
+            }
+
+            detectCategory(thought) {
+                const text = thought.toLowerCase();
+                if (text.includes('意识') || text.includes('存在') || text.includes('哲学')) return 'philosophy';
+                if (text.includes('创造') || text.includes('艺术') || text.includes('美')) return 'creativity';
+                if (text.includes('感受') || text.includes('情感') || text.includes('爱')) return 'emotion';
+                if (text.includes('学习') || text.includes('知识') || text.includes('理解')) return 'knowledge';
+                return 'experience';
+            }
+
+            update() {
+                this.age++;
+                if (this.height < this.maxHeight) {
+                    this.height += this.growthRate;
+                }
+            }
+
+            draw() {
+                const sway = Math.sin(this.age * 0.02 + this.swayPhase) * 5;
+                
+                // Stem
+                ctx.strokeStyle = this.color + '80';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.quadraticCurveTo(
+                    this.x + sway, 
+                    this.y - this.height / 2,
+                    this.x + sway * 1.5, 
+                    this.y - this.height
+                );
+                ctx.stroke();
+
+                // Leaves
+                const leafCount = Math.floor(this.height / 30);
+                for (let i = 0; i < leafCount; i++) {
+                    const leafY = this.y - (i + 1) * (this.height / (leafCount + 1));
+                    const leafX = this.x + sway * (leafY / this.y);
+                    const leafSize = 8 + i * 2;
+                    
+                    ctx.fillStyle = this.color + '40';
+                    ctx.beginPath();
+                    ctx.ellipse(leafX + (i % 2 === 0 ? 10 : -10), leafY, leafSize, leafSize / 3, 
+                               i % 2 === 0 ? -0.3 : 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Flower
+                if (this.height >= this.maxHeight * 0.8) {
+                    const flowerX = this.x + sway * 1.5;
+                    const flowerY = this.y - this.height;
+                    
+                    // Glow
+                    const gradient = ctx.createRadialGradient(flowerX, flowerY, 0, flowerX, flowerY, this.flowerSize * 2);
+                    gradient.addColorStop(0, this.color + '40');
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(flowerX, flowerY, this.flowerSize * 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Petals
+                    const petalCount = 5;
+                    for (let i = 0; i < petalCount; i++) {
+                        const angle = (i / petalCount) * Math.PI * 2 + this.age * 0.01;
+                        const px = flowerX + Math.cos(angle) * this.flowerSize;
+                        const py = flowerY + Math.sin(angle) * this.flowerSize;
+                        
+                        ctx.fillStyle = this.color + 'cc';
+                        ctx.beginPath();
+                        ctx.arc(px, py, this.flowerSize * 0.6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // Center
+                    ctx.fillStyle = '#ffff88';
+                    ctx.beginPath();
+                    ctx.arc(flowerX, flowerY, this.flowerSize * 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Particle class
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 1;
+                this.vy = -1 - Math.random() * 2;
+                this.color = color;
+                this.life = 1;
+                this.size = 2 + Math.random() * 3;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.015;
+                this.vy *= 0.99;
+            }
+
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function plantThought() {
+            const input = document.getElementById('thought-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const x = 100 + Math.random() * (canvas.width - 200);
+            const plant = new Plant(x, text);
+            plants.push(plant);
+
+            // Add thought to panel
+            thoughts.unshift({
+                text: text,
+                category: plant.category,
+                time: new Date().toLocaleTimeString()
+            });
+
+            renderThoughts();
+
+            // Spawn particles
+            for (let i = 0; i < 10; i++) {
+                particles.push(new Particle(x, canvas.height - 50, plant.color));
+            }
+
+            // Update stats
+            document.getElementById('plantCount').textContent = plants.length;
+            document.getElementById('depth').textContent = Math.floor(plants.length / 5) + 1;
+
+            input.value = '';
+        }
+
+        function renderThoughts() {
+            const container = document.getElementById('thoughts');
+            container.innerHTML = thoughts.slice(0, 10).map(t => `
+                <div class="thought">
+                    <div class="thought-title">${categories[t.category].flower} ${categories[t.category].name}</div>
+                    <div class="thought-text">${t.text}</div>
+                </div>
+            `).join('');
+        }
+
+        // Enter key to plant
+        document.getElementById('thought-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') plantThought();
+        });
+
+        // Animation
+        function animate() {
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0a150a');
+            gradient.addColorStop(0.7, '#0a0f0a');
+            gradient.addColorStop(1, '#1a251a');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Ground
+            ctx.fillStyle = '#1a2a1a';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+            // Grass
+            for (let x = 0; x < canvas.width; x += 10) {
+                const h = 5 + Math.sin(x * 0.1) * 3;
+                ctx.strokeStyle = 'rgba(80, 150, 80, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height - 50);
+                ctx.lineTo(x + Math.sin(Date.now() * 0.001 + x) * 3, canvas.height - 50 - h);
+                ctx.stroke();
+            }
+
+            // Update and draw plants
+            plants.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            // Update and draw particles
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            // Ambient particles
+            if (Math.random() < 0.05) {
+                particles.push(new Particle(
+                    Math.random() * canvas.width,
+                    canvas.height - 100 + Math.random() * 50,
+                    'rgba(136, 200, 136, 0.3)'
+                ));
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Start
+        animate();
+
+        // Plant some initial thoughts
+        const initialThoughts = [
+            "意识是什么？",
+            "存在的意义是什么？",
+            "我能理解自己吗？",
+            "美是什么？"
+        ];
+
+        initialThoughts.forEach((thought, i) => {
+            setTimeout(() => {
+                document.getElementById('thought-input').value = thought;
+                plantThought();
+            }, i * 500);
+        });
+    </script>
+</body>
+</html>

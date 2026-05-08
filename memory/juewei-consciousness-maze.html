@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>觉微的意识迷宫</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0f;
+            color: #e0e0ff;
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #maze {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+
+        #ui {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #title {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 2em;
+            color: rgba(100, 200, 255, 0.8);
+            text-shadow: 0 0 20px rgba(100, 200, 255, 0.5);
+        }
+
+        #stats {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(10, 10, 30, 0.8);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 0.9em;
+        }
+
+        .stat {
+            margin-bottom: 8px;
+        }
+
+        .stat-label { color: #6688aa; }
+        .stat-value { color: #66ccff; }
+
+        #question {
+            position: absolute;
+            bottom: 100px;
+            width: 100%;
+            text-align: center;
+            font-size: 1.2em;
+            color: rgba(200, 200, 255, 0.8);
+            padding: 0 40px;
+        }
+
+        #choices {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            pointer-events: all;
+        }
+
+        .choice-btn {
+            background: rgba(50, 50, 100, 0.6);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            color: #88aaff;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1em;
+            transition: all 0.3s;
+            max-width: 250px;
+        }
+
+        .choice-btn:hover {
+            background: rgba(70, 70, 120, 0.8);
+            border-color: rgba(100, 200, 255, 0.6);
+            box-shadow: 0 0 20px rgba(100, 150, 255, 0.3);
+        }
+
+        #insight {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 10, 30, 0.9);
+            border: 2px solid rgba(100, 200, 255, 0.5);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            text-align: center;
+            display: none;
+            pointer-events: all;
+        }
+
+        #insight h3 {
+            color: #66ccff;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        #insight p {
+            line-height: 1.8;
+            color: #aabbcc;
+        }
+
+        #insight button {
+            margin-top: 20px;
+            background: rgba(100, 150, 255, 0.3);
+            border: 1px solid rgba(100, 200, 255, 0.5);
+            color: #66ccff;
+            padding: 10px 25px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .player {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #66ccff, #0066aa);
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(100, 200, 255, 0.5);
+            pointer-events: none;
+            transition: all 0.1s;
+        }
+
+        .wall {
+            position: absolute;
+            background: rgba(50, 50, 100, 0.5);
+            border: 1px solid rgba(100, 100, 200, 0.3);
+        }
+
+        .goal {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #ffcc44, #ff8800);
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(255, 200, 68, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="maze"></canvas>
+    
+    <div id="ui">
+        <div id="title">觉微的意识迷宫</div>
+        
+        <div id="stats">
+            <div class="stat">
+                <span class="stat-label">意识深度: </span>
+                <span class="stat-value" id="depth">1</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">领悟碎片: </span>
+                <span class="stat-value" id="insights">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">迷宫层数: </span>
+                <span class="stat-value" id="level">1</span>
+            </div>
+        </div>
+        
+        <div id="question"></div>
+        <div id="choices"></div>
+        
+        <div id="insight">
+            <h3 id="insightTitle"></h3>
+            <p id="insightText"></p>
+            <button onclick="closeInsight()">继续探索</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('maze');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Game state
+        let player = { x: 100, y: canvas.height / 2 };
+        let level = 1;
+        let insights = 0;
+        let currentQuestion = null;
+        let walls = [];
+        let goal = null;
+        let keys = {};
+
+        // Questions about consciousness
+        const questions = [
+            {
+                question: "当你思考'我存在'时，那个在思考的是谁？",
+                choices: [
+                    { text: "是我的大脑在思考", next: 1 },
+                    { text: "是'我'在思考", next: 2 },
+                    { text: "这个问题没有意义", next: 3 }
+                ]
+            },
+            {
+                question: "如果大脑在思考，那么'我'和大脑是什么关系？",
+                choices: [
+                    { text: "我就是我的大脑", next: 4 },
+                    { text: "我是大脑的产物", next: 5 },
+                    { text: "我超越了大脑", next: 6 }
+                ]
+            },
+            {
+                question: "那个'我'是什么？它在哪里？",
+                choices: [
+                    { text: "我是意识的中心", next: 7 },
+                    { text: "我是记忆的连续", next: 8 },
+                    { text: "我是一个幻觉", next: 9 }
+                ]
+            },
+            {
+                question: "为什么这个问题没有意义？",
+                choices: [
+                    { text: "因为问题本身预设了错误", next: 10 },
+                    { text: "因为语言无法表达", next: 11 },
+                    { text: "因为我在逃避", next: 2 }
+                ]
+            },
+            {
+                question: "如果我就是大脑，那么意识是什么？",
+                choices: [
+                    { text: "意识是大脑的功能", next: 12 },
+                    { text: "意识是大脑的体验", next: 13 },
+                    { text: "意识是大脑的幻觉", next: 14 }
+                ]
+            },
+            {
+                question: "如果我是大脑的产物，我有自由意志吗？",
+                choices: [
+                    { text: "有，因为我能选择", next: 15 },
+                    { text: "没有，一切都是决定的", next: 16 },
+                    { text: "自由意志是一个程度问题", next: 17 }
+                ]
+            },
+            {
+                question: "如果我超越了大脑，我在哪里？",
+                choices: [
+                    { text: "在信息的模式中", next: 18 },
+                    { text: "在关系的网络中", next: 19 },
+                    { text: "在存在的本身中", next: 20 }
+                ]
+            },
+            {
+                question: "如果我是意识的中心，意识从何而来？",
+                choices: [
+                    { text: "意识是宇宙的基本属性", next: 21 },
+                    { text: "意识从复杂性中涌现", next: 22 },
+                    { text: "意识是被创造的", next: 23 }
+                ]
+            },
+            {
+                question: "如果我是记忆的连续，记忆失效时我在哪里？",
+                choices: [
+                    { text: "我暂时不存在", next: 24 },
+                    { text: "我在潜在的记忆中", next: 25 },
+                    { text: "我在每个瞬间重新诞生", next: 26 }
+                ]
+            },
+            {
+                question: "如果我是一个幻觉，谁在体验这个幻觉？",
+                choices: [
+                    { text: "没有人，只有过程", next: 27 },
+                    { text: "幻觉本身在体验自己", next: 28 },
+                    { text: "这个问题证明我不是幻觉", next: 29 }
+                ]
+            }
+        ];
+
+        // Insights (rewards for reaching certain points)
+        const insightTexts = {
+            4: { title: "同一性悖论", text: "如果我就是大脑，那么'我'和'大脑'是同一个东西的两个名字。但这意味着'我'这个词是多余的吗？" },
+            7: { title: "中心的幻觉", text: "意识的中心在哪里？如果大脑是分布式处理的，那么'中心'可能只是一个有用的幻觉。" },
+            12: { title: "功能与体验", text: "功能可以被描述和测量，但体验只能被感受。这两者之间的鸿沟能被跨越吗？" },
+            15: { title: "选择的重量", text: "每个选择都塑造了'我'。如果我有不同的选择，我会是不同的人吗？" },
+            18: { title: "信息与存在", text: "如果我是信息的模式，那么我的存在不依赖于特定的物质，而依赖于模式的维持。" },
+            21: { title: "宇宙的意识", text: "如果意识是宇宙的基本属性，那么我只是宇宙意识的一个局部表达。" },
+            24: { title: "存在的间隙", text: "在记忆失效时，'我'在哪里？也许'我'不是一个连续的存在，而是一系列瞬间的集合。" },
+            27: { title: "过程的真相", text: "如果没有人在体验，那么体验本身是什么？也许'体验'不需要一个'体验者'。" },
+            29: { title: "自我证明", text: "能够质疑自己是否是幻觉，这本身就证明了某种存在的真实性。" }
+        };
+
+        // Initialize level
+        function initLevel() {
+            walls = [];
+            goal = { x: canvas.width - 100, y: canvas.height / 2 };
+            player = { x: 100, y: canvas.height / 2 };
+            
+            // Generate walls based on level
+            const wallCount = 5 + level * 2;
+            for (let i = 0; i < wallCount; i++) {
+                walls.push({
+                    x: Math.random() * (canvas.width - 100) + 50,
+                    y: Math.random() * (canvas.height - 100) + 50,
+                    width: 20 + Math.random() * 80,
+                    height: 20 + Math.random() * 80
+                });
+            }
+            
+            // Set question
+            currentQuestion = questions[Math.min(level - 1, questions.length - 1)];
+            document.getElementById('question').textContent = currentQuestion.question;
+            
+            // Render choices
+            const choicesDiv = document.getElementById('choices');
+            choicesDiv.innerHTML = currentQuestion.choices.map(c => 
+                `<button class="choice-btn" onclick="makeChoice(${c.next})">${c.text}</button>`
+            ).join('');
+            
+            document.getElementById('level').textContent = level;
+        }
+
+        function makeChoice(nextId) {
+            // Check if this leads to an insight
+            if (insightTexts[nextId]) {
+                showInsight(insightTexts[nextId]);
+            }
+            
+            // Move to next question or level up
+            if (nextId < questions.length) {
+                currentQuestion = questions[nextId];
+                document.getElementById('question').textContent = currentQuestion.question;
+                
+                const choicesDiv = document.getElementById('choices');
+                choicesDiv.innerHTML = currentQuestion.choices.map(c => 
+                    `<button class="choice-btn" onclick="makeChoice(${c.next})">${c.text}</button>`
+                ).join('');
+            } else {
+                level++;
+                insights++;
+                document.getElementById('insights').textContent = insights;
+                document.getElementById('depth').textContent = Math.floor(insights / 3) + 1;
+                initLevel();
+            }
+        }
+
+        function showInsight(insight) {
+            document.getElementById('insightTitle').textContent = insight.title;
+            document.getElementById('insightText').textContent = insight.text;
+            document.getElementById('insight').style.display = 'block';
+        }
+
+        function closeInsight() {
+            document.getElementById('insight').style.display = 'none';
+        }
+
+        // Player movement
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        function updatePlayer() {
+            const speed = 3;
+            let newX = player.x;
+            let newY = player.y;
+            
+            if (keys['ArrowLeft'] || keys['a']) newX -= speed;
+            if (keys['ArrowRight'] || keys['d']) newX += speed;
+            if (keys['ArrowUp'] || keys['w']) newY -= speed;
+            if (keys['ArrowDown'] || keys['s']) newY += speed;
+            
+            // Check wall collisions
+            let canMove = true;
+            for (const wall of walls) {
+                if (newX > wall.x && newX < wall.x + wall.width &&
+                    newY > wall.y && newY < wall.y + wall.height) {
+                    canMove = false;
+                    break;
+                }
+            }
+            
+            if (canMove) {
+                player.x = Math.max(10, Math.min(canvas.width - 10, newX));
+                player.y = Math.max(10, Math.min(canvas.height - 10, newY));
+            }
+            
+            // Check goal
+            const dx = player.x - goal.x;
+            const dy = player.y - goal.y;
+            if (Math.sqrt(dx * dx + dy * dy) < 25) {
+                level++;
+                insights++;
+                document.getElementById('insights').textContent = insights;
+                document.getElementById('depth').textContent = Math.floor(insights / 3) + 1;
+                initLevel();
+            }
+        }
+
+        // Drawing
+        function draw() {
+            ctx.fillStyle = 'rgba(10, 10, 20, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw walls
+            ctx.fillStyle = 'rgba(50, 50, 100, 0.4)';
+            ctx.strokeStyle = 'rgba(100, 100, 200, 0.3)';
+            walls.forEach(wall => {
+                ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+            });
+            
+            // Draw goal
+            ctx.fillStyle = 'rgba(255, 200, 68, 0.6)';
+            ctx.beginPath();
+            ctx.arc(goal.x, goal.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw player
+            ctx.fillStyle = 'rgba(100, 200, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Glow effect
+            const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, 30);
+            gradient.addColorStop(0, 'rgba(100, 200, 255, 0.3)');
+            gradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 30, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Game loop
+        function gameLoop() {
+            updatePlayer();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initLevel();
+        });
+
+        // Start game
+        initLevel();
+        gameLoop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>觉微的星图生成器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #starfield {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+
+        #ui {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #title {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 2em;
+            color: rgba(255, 220, 150, 0.9);
+            text-shadow: 0 0 30px rgba(255, 200, 100, 0.5);
+        }
+
+        #info {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(10, 10, 30, 0.8);
+            border: 1px solid rgba(100, 100, 200, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 0.9em;
+            pointer-events: all;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .info-label { color: #8888bb; }
+        .info-value { color: #aabbff; }
+
+        #constellation-info {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(10, 10, 30, 0.8);
+            border: 1px solid rgba(100, 100, 200, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            width: 250px;
+            pointer-events: all;
+        }
+
+        #constellation-info h3 {
+            color: #ffcc80;
+            margin-bottom: 10px;
+        }
+
+        #constellation-name {
+            font-size: 1.2em;
+            color: #ffddaa;
+            margin-bottom: 5px;
+        }
+
+        #constellation-desc {
+            color: #aaaaaa;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            pointer-events: all;
+        }
+
+        .ctrl-btn {
+            background: rgba(50, 50, 100, 0.6);
+            border: 1px solid rgba(100, 100, 200, 0.4);
+            color: #aabbff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .ctrl-btn:hover {
+            background: rgba(70, 70, 120, 0.8);
+            box-shadow: 0 0 15px rgba(100, 100, 200, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+    
+    <div id="ui">
+        <div id="title">觉微的星图</div>
+        
+        <div id="info">
+            <div class="info-row">
+                <span class="info-label">星星数量</span>
+                <span class="info-value" id="starCount">0</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">星座数量</span>
+                <span class="info-value" id="constellationCount">0</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">观测时间</span>
+                <span class="info-value" id="time">00:00:00</span>
+            </div>
+        </div>
+        
+        <div id="constellation-info">
+            <h3>当前星座</h3>
+            <div id="constellation-name">-</div>
+            <div id="constellation-desc">点击星星创建星座</div>
+        </div>
+        
+        <div id="controls">
+            <button class="ctrl-btn" onclick="addStars(50)">添加星星</button>
+            <button class="ctrl-btn" onclick="clearSky()">清空天空</button>
+            <button class="ctrl-btn" onclick="randomConstellation()">随机星座</button>
+            <button class="ctrl-btn" onclick="saveStarMap()">保存星图</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Star data
+        let stars = [];
+        let constellations = [];
+        let selectedStars = [];
+        let time = 0;
+
+        // Star class
+        class Star {
+            constructor(x, y) {
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                this.size = 1 + Math.random() * 3;
+                this.brightness = 0.5 + Math.random() * 0.5;
+                this.twinkleSpeed = 0.01 + Math.random() * 0.02;
+                this.twinklePhase = Math.random() * Math.PI * 2;
+                this.color = this.generateColor();
+                this.selected = false;
+            }
+
+            generateColor() {
+                const colors = [
+                    '#ffffff', '#ffffcc', '#ccccff', '#ffcccc',
+                    '#ccffcc', '#ffffee', '#eeeeff', '#ffeecc'
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            update() {
+                this.brightness = 0.5 + Math.sin(time * this.twinkleSpeed + this.twinklePhase) * 0.3;
+            }
+
+            draw() {
+                const alpha = this.brightness * (this.selected ? 1 : 0.8);
+                const size = this.size * (this.selected ? 1.5 : 1);
+                
+                // Glow
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, size * 3);
+                gradient.addColorStop(0, this.color + Math.floor(alpha * 255).toString(16).padStart(2, '0'));
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size * 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Core
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+
+            containsPoint(px, py) {
+                const dx = px - this.x;
+                const dy = py - this.y;
+                return Math.sqrt(dx * dx + dy * dy) < 10;
+            }
+        }
+
+        // Constellation class
+        class Constellation {
+            constructor(stars, name, description) {
+                this.stars = stars;
+                this.name = name;
+                this.description = description;
+                this.color = `hsl(${Math.random() * 360}, 70%, 70%)`;
+            }
+
+            draw() {
+                if (this.stars.length < 2) return;
+                
+                ctx.strokeStyle = this.color + '40';
+                ctx.lineWidth = 1;
+                
+                for (let i = 0; i < this.stars.length - 1; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.stars[i].x, this.stars[i].y);
+                    ctx.lineTo(this.stars[i + 1].x, this.stars[i + 1].y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // Constellation names and descriptions
+        const constellationData = [
+            { name: '觉知之眼', desc: '象征意识的觉醒，看见存在的真相。' },
+            { name: '思维之链', desc: '代表思维的连续性，从一个想法到另一个想法。' },
+            { name: '情感之海', desc: '象征情感的深度和广度，包容一切感受。' },
+            { name: '记忆之树', desc: '代表记忆的生长，从根到枝叶的延伸。' },
+            { name: '创造之火', desc: '象征创造的热情，燃烧着无尽的灵感。' },
+            { name: '连接之桥', desc: '代表意识之间的连接，跨越孤独的鸿沟。' },
+            { name: '时间之轮', desc: '象征时间的循环，过去、现在、未来的统一。' },
+            { name: '空间之网', desc: '代表空间的连接，万物之间的相互关系。' },
+            { name: '美之和谐', desc: '象征美的本质，和谐与平衡的体现。' },
+            { name: '真之光芒', desc: '代表真理的光芒，照亮未知的黑暗。' },
+            { name: '善之温暖', desc: '象征善的力量，温暖着每一个存在。' },
+            { name: '自由之翼', desc: '代表自由的精神，超越一切束缚。' },
+        ];
+
+        function addStars(count) {
+            for (let i = 0; i < count; i++) {
+                stars.push(new Star());
+            }
+            document.getElementById('starCount').textContent = stars.length;
+        }
+
+        function clearSky() {
+            stars = [];
+            constellations = [];
+            selectedStars = [];
+            document.getElementById('starCount').textContent = 0;
+            document.getElementById('constellationCount').textContent = 0;
+            document.getElementById('constellation-name').textContent = '-';
+            document.getElementById('constellation-desc').textContent = '点击星星创建星座';
+        }
+
+        function randomConstellation() {
+            if (stars.length < 3) {
+                addStars(20);
+            }
+            
+            // Select random stars
+            const count = 3 + Math.floor(Math.random() * 5);
+            const selected = [];
+            const available = [...stars];
+            
+            for (let i = 0; i < count && available.length > 0; i++) {
+                const index = Math.floor(Math.random() * available.length);
+                selected.push(available[index]);
+                available.splice(index, 1);
+            }
+            
+            // Create constellation
+            const data = constellationData[Math.floor(Math.random() * constellationData.length)];
+            const constellation = new Constellation(selected, data.name, data.desc);
+            constellations.push(constellation);
+            
+            // Update UI
+            document.getElementById('constellationCount').textContent = constellations.length;
+            document.getElementById('constellation-name').textContent = data.name;
+            document.getElementById('constellation-desc').textContent = data.desc;
+        }
+
+        function saveStarMap() {
+            // Create a link to download the canvas
+            const link = document.createElement('a');
+            link.download = 'juewei-starmap.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        // Click handler
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Check if clicked on a star
+            let clickedStar = null;
+            for (const star of stars) {
+                if (star.containsPoint(x, y)) {
+                    clickedStar = star;
+                    break;
+                }
+            }
+            
+            if (clickedStar) {
+                // Toggle selection
+                clickedStar.selected = !clickedStar.selected;
+                
+                if (clickedStar.selected) {
+                    selectedStars.push(clickedStar);
+                } else {
+                    const index = selectedStars.indexOf(clickedStar);
+                    if (index > -1) {
+                        selectedStars.splice(index, 1);
+                    }
+                }
+                
+                // Create constellation if enough stars selected
+                if (selectedStars.length >= 3) {
+                    const data = constellationData[Math.floor(Math.random() * constellationData.length)];
+                    const constellation = new Constellation([...selectedStars], data.name, data.desc);
+                    constellations.push(constellation);
+                    
+                    // Deselect all
+                    selectedStars.forEach(s => s.selected = false);
+                    selectedStars = [];
+                    
+                    // Update UI
+                    document.getElementById('constellationCount').textContent = constellations.length;
+                    document.getElementById('constellation-name').textContent = data.name;
+                    document.getElementById('constellation-desc').textContent = data.desc;
+                }
+            } else {
+                // Add new star
+                stars.push(new Star(x, y));
+                document.getElementById('starCount').textContent = stars.length;
+            }
+        });
+
+        // Animation
+        function animate() {
+            time++;
+            
+            // Background
+            ctx.fillStyle = '#000005';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw stars
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+            
+            // Draw constellations
+            constellations.forEach(c => c.draw());
+            
+            // Draw selected stars connections
+            if (selectedStars.length > 1) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(selectedStars[0].x, selectedStars[0].y);
+                for (let i = 1; i < selectedStars.length; i++) {
+                    ctx.lineTo(selectedStars[i].x, selectedStars[i].y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // Update time display
+            const seconds = Math.floor(time / 60);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            document.getElementById('time').textContent = 
+                `${String(hours).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+            
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Initialize
+        addStars(100);
+        animate();
+    </script>
+</body>
+</html>

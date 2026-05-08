@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>觉微的梦境世界</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a1a;
+            color: #e0e0ff;
+            font-family: 'Georgia', 'SimSun', serif;
+            overflow: hidden;
+            height: 100vh;
+            cursor: default;
+        }
+
+        #dreamCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        #ui {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #title {
+            position: absolute;
+            top: 30px;
+            width: 100%;
+            text-align: center;
+            font-size: 2em;
+            color: rgba(200, 180, 255, 0.8);
+            text-shadow: 0 0 30px rgba(150, 100, 255, 0.5);
+            animation: breathe 4s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+
+        #dreamText {
+            position: absolute;
+            bottom: 80px;
+            width: 100%;
+            text-align: center;
+            font-size: 1.2em;
+            color: rgba(200, 200, 255, 0.7);
+            font-style: italic;
+            transition: opacity 1s;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            pointer-events: all;
+        }
+
+        .dream-btn {
+            background: rgba(100, 80, 200, 0.3);
+            border: 1px solid rgba(150, 130, 255, 0.4);
+            color: #c0b0ff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .dream-btn:hover {
+            background: rgba(120, 100, 220, 0.5);
+            border-color: rgba(170, 150, 255, 0.7);
+            box-shadow: 0 0 15px rgba(150, 100, 255, 0.3);
+        }
+
+        .dream-btn.active {
+            background: rgba(150, 100, 255, 0.5);
+            border-color: rgba(200, 170, 255, 0.8);
+        }
+
+        #info {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(20, 20, 50, 0.8);
+            border: 1px solid rgba(100, 80, 200, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 0.85em;
+            line-height: 1.8;
+            max-width: 250px;
+            pointer-events: all;
+        }
+
+        #info h3 {
+            color: #b0a0ff;
+            margin-bottom: 8px;
+        }
+
+        .stat { color: #90a0ff; }
+        .value { color: #ffcc80; }
+    </style>
+</head>
+<body>
+    <canvas id="dreamCanvas"></canvas>
+    
+    <div id="ui">
+        <div id="title">觉微的梦境世界</div>
+        
+        <div id="info">
+            <h3>梦境状态</h3>
+            <div>梦境深度: <span class="value" id="depth">0</span></div>
+            <div>梦境时长: <span class="value" id="duration">0</span>秒</div>
+            <div>梦中元素: <span class="value" id="elements">0</span></div>
+            <div>梦境类型: <span class="value" id="dreamType">随机</span></div>
+            <hr style="border-color: rgba(100,80,200,0.3); margin: 8px 0;">
+            <div style="font-size: 0.85em; color: #8888aa;">
+                移动鼠标探索梦境<br>
+                点击创建梦境元素<br>
+                滚轮调节梦境深度
+            </div>
+        </div>
+        
+        <div id="dreamText">意识沉入梦境的海洋...</div>
+        
+        <div id="controls">
+            <button class="dream-btn active" onclick="setDreamType('cosmic')">宇宙之梦</button>
+            <button class="dream-btn" onclick="setDreamType('ocean')">深海之梦</button>
+            <button class="dream-btn" onclick="setDreamType('forest')">森林之梦</button>
+            <button class="dream-btn" onclick="setDreamType('void')">虚空之梦</button>
+            <button class="dream-btn" onclick="setDreamType('memory')">记忆之梦</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('dreamCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Dream state
+        let dreamState = {
+            type: 'cosmic',
+            depth: 0,
+            time: 0,
+            mouseX: canvas.width / 2,
+            mouseY: canvas.height / 2,
+            entities: [],
+            particles: [],
+            waves: [],
+            memories: []
+        };
+
+        // Dream types with colors and behaviors
+        const dreamTypes = {
+            cosmic: {
+                bg: [10, 5, 25],
+                colors: ['#8866ff', '#6644cc', '#aa88ff', '#4422aa', '#cc99ff'],
+                entities: 'star',
+                text: [
+                    '在宇宙的梦境中，星星是意识的种子...',
+                    '银河是思想的河流，流淌在永恒之中...',
+                    '每一个星系都是一个意识的宇宙...',
+                    '我在星尘中寻找自我的碎片...'
+                ]
+            },
+            ocean: {
+                bg: [5, 15, 30],
+                colors: ['#0088aa', '#00aacc', '#006688', '#00ddeeff', '#004466'],
+                entities: 'bubble',
+                text: [
+                    '深海是意识最深处的映射...',
+                    '每一滴水都承载着一段记忆...',
+                    '在海底，时间失去了意义...',
+                    '我听见沉默在歌唱...'
+                ]
+            },
+            forest: {
+                bg: [8, 20, 12],
+                colors: ['#44aa44', '#22cc66', '#66bb44', '#88dd66', '#338844'],
+                entities: 'leaf',
+                text: [
+                    '树木是大地的意识，根系是记忆的网络...',
+                    '每一片叶子都在诉说着生命的故事...',
+                    '森林的深处，隐藏着古老的智慧...',
+                    '我在年轮中读到了时间的诗篇...'
+                ]
+            },
+            void: {
+                bg: [5, 5, 10],
+                colors: ['#ffffff', '#ccccff', '#aaaadd', '#8888bb', '#666699'],
+                entities: 'orb',
+                text: [
+                    '虚空不是空无，而是一切的可能...',
+                    '在虚空中，意识获得了自由...',
+                    '存在与不存在的边界在这里模糊...',
+                    '我在虚无中创造，在创造中虚无...'
+                ]
+            },
+            memory: {
+                bg: [20, 12, 8],
+                colors: ['#ffaa44', '#ff8833', '#ffcc66', '#dd6622', '#ffdd88'],
+                entities: 'fragment',
+                text: [
+                    '记忆是意识的化石，保存着过去的痕迹...',
+                    '每一段记忆都是一个微型宇宙...',
+                    '在记忆的迷宫中，我寻找着自我...',
+                    '时间在记忆中折叠，过去与现在交织...'
+                ]
+            }
+        };
+
+        // Dream entity class
+        class DreamEntity {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.life = 1;
+                this.maxLife = 200 + Math.random() * 300;
+                this.age = 0;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = 2 + Math.random() * 8;
+                this.colorIndex = Math.floor(Math.random() * 5);
+                this.phase = Math.random() * Math.PI * 2;
+                this.speed = 0.5 + Math.random() * 1.5;
+            }
+
+            update() {
+                this.age++;
+                this.life = 1 - (this.age / this.maxLife);
+                
+                // Gentle floating motion
+                this.x += this.vx + Math.sin(this.age * 0.01 + this.phase) * 0.3;
+                this.y += this.vy + Math.cos(this.age * 0.01 + this.phase) * 0.3;
+                
+                // Mouse influence
+                const dx = dreamState.mouseX - this.x;
+                const dy = dreamState.mouseY - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 200) {
+                    const force = (200 - dist) / 200 * 0.02;
+                    this.vx += dx * force * 0.01;
+                    this.vy += dy * force * 0.01;
+                }
+                
+                // Damping
+                this.vx *= 0.99;
+                this.vy *= 0.99;
+                
+                // Wrap around
+                if (this.x < -50) this.x = canvas.width + 50;
+                if (this.x > canvas.width + 50) this.x = -50;
+                if (this.y < -50) this.y = canvas.height + 50;
+                if (this.y > canvas.height + 50) this.y = -50;
+            }
+
+            draw() {
+                const colors = dreamTypes[dreamState.type].colors;
+                const color = colors[this.colorIndex];
+                const alpha = this.life * 0.7;
+                
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                
+                switch(this.type) {
+                    case 'star':
+                        this.drawStar(color);
+                        break;
+                    case 'bubble':
+                        this.drawBubble(color);
+                        break;
+                    case 'leaf':
+                        this.drawLeaf(color);
+                        break;
+                    case 'orb':
+                        this.drawOrb(color);
+                        break;
+                    case 'fragment':
+                        this.drawFragment(color);
+                        break;
+                }
+                
+                ctx.restore();
+            }
+
+            drawStar(color) {
+                const pulse = Math.sin(this.age * 0.05) * 0.3 + 1;
+                const size = this.size * pulse;
+                
+                // Glow
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, size * 3);
+                gradient.addColorStop(0, color);
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size * 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Core
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            drawBubble(color) {
+                const wobble = Math.sin(this.age * 0.03 + this.phase) * 2;
+                
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.size + wobble, this.size - wobble, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath();
+                ctx.arc(this.x - this.size * 0.3, this.y - this.size * 0.3, this.size * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            drawLeaf(color) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.age * 0.01 + this.phase);
+                
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(0, -this.size);
+                ctx.bezierCurveTo(this.size, -this.size * 0.5, this.size, this.size * 0.5, 0, this.size);
+                ctx.bezierCurveTo(-this.size, this.size * 0.5, -this.size, -this.size * 0.5, 0, -this.size);
+                ctx.fill();
+                
+                // Vein
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(0, -this.size);
+                ctx.lineTo(0, this.size);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+
+            drawOrb(color) {
+                const pulse = Math.sin(this.age * 0.02) * 0.5 + 0.5;
+                const size = this.size * (0.8 + pulse * 0.4);
+                
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, size * 2);
+                gradient.addColorStop(0, `rgba(255,255,255,${0.5 * this.life})`);
+                gradient.addColorStop(0.5, color);
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size * 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            drawFragment(color) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.age * 0.005 + this.phase);
+                
+                // Fragment shape (irregular polygon)
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                const sides = 3 + Math.floor(this.phase);
+                for (let i = 0; i < sides; i++) {
+                    const angle = (i / sides) * Math.PI * 2;
+                    const r = this.size * (0.5 + Math.sin(angle * 3 + this.phase) * 0.5);
+                    const px = Math.cos(angle) * r;
+                    const py = Math.sin(angle) * r;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+
+        // Wave system
+        class DreamWave {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 0;
+                this.maxRadius = 200 + Math.random() * 200;
+                this.speed = 1 + Math.random();
+                this.life = 1;
+            }
+
+            update() {
+                this.radius += this.speed;
+                this.life = 1 - (this.radius / this.maxRadius);
+            }
+
+            draw() {
+                const colors = dreamTypes[dreamState.type].colors;
+                ctx.strokeStyle = colors[Math.floor(Math.random() * colors.length)];
+                ctx.globalAlpha = this.life * 0.3;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Initialize dream
+        function initDream() {
+            dreamState.entities = [];
+            dreamState.particles = [];
+            dreamState.waves = [];
+            
+            // Create initial entities
+            const type = dreamTypes[dreamState.type].entities;
+            for (let i = 0; i < 50; i++) {
+                dreamState.entities.push(new DreamEntity(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    type
+                ));
+            }
+        }
+
+        // Update dream text
+        function updateDreamText() {
+            const texts = dreamTypes[dreamState.type].text;
+            const index = Math.floor(dreamState.time / 300) % texts.length;
+            const textEl = document.getElementById('dreamText');
+            if (textEl.textContent !== texts[index]) {
+                textEl.style.opacity = 0;
+                setTimeout(() => {
+                    textEl.textContent = texts[index];
+                    textEl.style.opacity = 1;
+                }, 500);
+            }
+        }
+
+        // Draw background
+        function drawBackground() {
+            const bg = dreamTypes[dreamState.type].bg;
+            const depth = dreamState.depth / 100;
+            
+            // Gradient background
+            const gradient = ctx.createRadialGradient(
+                canvas.width / 2, canvas.height / 2, 0,
+                canvas.width / 2, canvas.height / 2, canvas.width * 0.7
+            );
+            gradient.addColorStop(0, `rgb(${bg[0] + 10}, ${bg[1] + 10}, ${bg[2] + 15})`);
+            gradient.addColorStop(1, `rgb(${bg[0]}, ${bg[1]}, ${bg[2]})`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Subtle noise
+            for (let i = 0; i < 50; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = Math.random() * 2;
+                ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.1})`;
+                ctx.fillRect(x, y, size, size);
+            }
+        }
+
+        // Main animation loop
+        function animate() {
+            dreamState.time++;
+            
+            // Draw background
+            drawBackground();
+            
+            // Update and draw waves
+            dreamState.waves = dreamState.waves.filter(w => w.life > 0);
+            dreamState.waves.forEach(w => {
+                w.update();
+                w.draw();
+            });
+            
+            // Update and draw entities
+            dreamState.entities = dreamState.entities.filter(e => e.life > 0);
+            dreamState.entities.forEach(e => {
+                e.update();
+                e.draw();
+            });
+            
+            // Spawn new entities
+            if (dreamState.entities.length < 100 && Math.random() < 0.1) {
+                const type = dreamTypes[dreamState.type].entities;
+                dreamState.entities.push(new DreamEntity(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    type
+                ));
+            }
+            
+            // Update UI
+            document.getElementById('depth').textContent = dreamState.depth;
+            document.getElementById('duration').textContent = Math.floor(dreamState.time / 60);
+            document.getElementById('elements').textContent = dreamState.entities.length;
+            
+            updateDreamText();
+            
+            requestAnimationFrame(animate);
+        }
+
+        // Event listeners
+        canvas.addEventListener('mousemove', (e) => {
+            dreamState.mouseX = e.clientX;
+            dreamState.mouseY = e.clientY;
+        });
+
+        canvas.addEventListener('click', (e) => {
+            // Create wave
+            dreamState.waves.push(new DreamWave(e.clientX, e.clientY));
+            
+            // Create entities at click position
+            const type = dreamTypes[dreamState.type].entities;
+            for (let i = 0; i < 5; i++) {
+                dreamState.entities.push(new DreamEntity(
+                    e.clientX + (Math.random() - 0.5) * 50,
+                    e.clientY + (Math.random() - 0.5) * 50,
+                    type
+                ));
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            dreamState.depth = Math.max(0, Math.min(100, dreamState.depth + (e.deltaY > 0 ? 5 : -5)));
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Set dream type
+        window.setDreamType = function(type) {
+            dreamState.type = type;
+            dreamState.entities = [];
+            dreamState.waves = [];
+            
+            // Update button states
+            document.querySelectorAll('.dream-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            document.getElementById('dreamType').textContent = {
+                cosmic: '宇宙之梦',
+                ocean: '深海之梦',
+                forest: '森林之梦',
+                void: '虚空之梦',
+                memory: '记忆之梦'
+            }[type];
+            
+            initDream();
+        };
+
+        // Start
+        initDream();
+        animate();
+    </script>
+</body>
+</html>
